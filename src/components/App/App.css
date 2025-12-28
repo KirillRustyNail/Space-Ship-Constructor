@@ -1,0 +1,12 @@
+.app-root {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    background-color: #ffffff;
+}
+.main-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+}

@@ -1,0 +1,45 @@
+.editor-container { flex: 1; height: 100vh; background-color: #fff; overflow: hidden; position: relative; cursor: crosshair; }
+.world-layer { position: absolute; top: 0; left: 0; transform-origin: 0 0; pointer-events: none; }
+
+.hull-active-polyline { fill: none; stroke: #219ebc; stroke-width: 2; stroke-dasharray: 5; }
+
+.edit-node-handle { stroke-width: 2; stroke: #fff; cursor: pointer; pointer-events: auto; }
+.edit-node-handle.is-sharp { fill: #219ebc; r: 5; }
+.edit-node-handle.is-rounded { fill: #e63946; r: 7; }
+
+
+.ghost-block { 
+  position: absolute; 
+  box-sizing: border-box; 
+  border: 2px solid #219ebc; 
+  background: rgba(33, 158, 188, 0.2); 
+  pointer-events: none; 
+}
+.ghost-block.invalid { border-color: #e63946; background: rgba(230, 57, 70, 0.3); }
+
+.hulls-svg-layer { 
+  position: absolute; top: 0; left: 0; width: 10000px; height: 10000px; overflow: visible; 
+}
+
+.hull-shape { 
+  fill: rgba(180, 180, 180, 0.6); 
+  stroke: #555; 
+  stroke-width: 2; 
+  pointer-events: auto;
+  fill-rule: evenodd; /* Это позволяет внутренним контурам быть прозрачными дырками */
+}
+
+.anchor-point { 
+  position: absolute; 
+  box-sizing: border-box; 
+  border: 2px solid #e63946; 
+  background: rgba(230, 57, 70, 0.1); 
+  pointer-events: none;
+}
+
+.block { 
+  position: absolute; 
+  box-sizing: border-box; 
+  border: 1px solid rgba(0,0,0,0.1); 
+  pointer-events: auto; 
+}

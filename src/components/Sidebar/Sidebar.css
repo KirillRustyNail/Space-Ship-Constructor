@@ -1,0 +1,6 @@
+.sidebar { width: 240px; background: #f8f9fa; border-right: 1px solid #ddd; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.modes button { padding: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 11px; font-weight: bold; }
+.modes button.active { background: #219ebc; color: #fff; border-color: #219ebc; }
+.item { padding: 10px; border: 1px solid #eee; margin-bottom: 5px; cursor: pointer; background: #fff; font-size: 13px; }
+.item.sel { border-color: #219ebc; background: #e3f2fd; }

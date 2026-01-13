@@ -3,7 +3,7 @@ export const PX_PER_MM = 3.78;
 export const CELL_SIZE = Math.round(GRID_SIZE_MM * PX_PER_MM);
 
 export const ZOOM_CONFIG = {
-  MIN: 1.5,
+  MIN: 0.5,
   MAX: 9.0,
   SENSITIVITY: 0.0015
 };

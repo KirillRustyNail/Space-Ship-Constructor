@@ -14,7 +14,8 @@ export const MODES = {
   DELETE: 'DELETE', 
   HULL: 'HULL',
   SUB_HULL: 'SUB_HULL', // Новый режим
-  EDIT: 'EDIT'
+  EDIT: 'EDIT',
+  WALL: 'WALL'
 };
 
 

@@ -1,7 +1,12 @@
+
 .editor-container { flex: 1; height: 100vh; background-color: #fff; overflow: hidden; position: relative; cursor: crosshair; }
 .world-layer { position: absolute; top: 0; left: 0; transform-origin: 0 0; pointer-events: none; }
 
 .hull-active-polyline { fill: none; stroke: #219ebc; stroke-width: 2; stroke-dasharray: 5; }
+
+.wall-line { fill: none; stroke: #457b9d; stroke-width: 4; stroke-linecap: round; pointer-events: auto; }
+.wall-active-polyline { fill: none; stroke: #457b9d; stroke-width: 4; stroke-dasharray: 5; pointer-events: none; }
+.wall-node { fill: #457b9d; }
 
 .edit-node-handle { stroke-width: 2; stroke: #fff; cursor: pointer; pointer-events: auto; }
 .edit-node-handle.is-sharp { fill: #219ebc; r: 5; }
@@ -11,8 +16,8 @@
 .ghost-block { 
   position: absolute; 
   box-sizing: border-box; 
-  border: 1px solid #219dbc27; 
-  background: rgba(33, 158, 188, 0.2); 
+  border: none; 
+  background: rgba(33, 158, 188, 0.1); 
   pointer-events: none; 
 }
 .ghost-block.invalid { border-color: #e63946; background: rgba(230, 57, 70, 0.3); }
@@ -25,8 +30,8 @@
   fill: rgba(180, 180, 180, 0.6); 
   stroke: #555; 
   stroke-width: 2; 
-  pointer-events: auto;
-  fill-rule: evenodd; /* Это позволяет внутренним контурам быть прозрачными дырками */
+  pointer-events: none;
+  fill-rule: evenodd; 
 }
 
 .anchor-point { 

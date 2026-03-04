@@ -14,42 +14,55 @@ const App = () => {
   // State
   const [blocks, setBlocks] = useState([]);
   const [hulls, setHulls] = useState([]);
+  const [walls, setWalls] = useState([]); // [{id, nodes: [{x, y}]}]
   
   // History
   const [history, setHistory] = useState([{ blocks: [], hulls: [] }]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  const saveToHistory = (newBlocks, newHulls) => {
-    const nextState = { blocks: [...newBlocks], hulls: JSON.parse(JSON.stringify(newHulls)) };
-    const newHistory = history.slice(0, historyIndex + 1);
+  const saveToHistory = (newBlocks, newHulls, newWalls) => {
+    const nextState = { 
+      blocks: newBlocks !== undefined ? newBlocks : blocks, 
+      hulls: newHulls !== undefined ? newHulls : hulls,
+      walls: newWalls !== undefined ? newWalls : walls
+    };
+    
+    const currentSerialized = JSON.stringify(history[historyIndex]);
+    const nextSerialized = JSON.stringify(nextState);
+
+    if (currentSerialized === nextSerialized) return;
+
+    let newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(nextState);
     
-    // Keep only last 10 actions (11 entries total including start state)
+
     if (newHistory.length > MAX_HISTORY + 1) {
-      newHistory.shift();
+      newHistory = newHistory.slice(newHistory.length - 11);
     }
     
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
   };
 
-  const undo = () => {
+  const undo = React.useCallback(() => {
     if (historyIndex > 0) {
-      const prev = history[historyIndex - 1];
-      setBlocks(prev.blocks);
-      setHulls(prev.hulls);
+      const prevState = history[historyIndex - 1];
+      setBlocks(prevState.blocks);
+      setHulls(prevState.hulls);
+      setWalls(prevState.walls);
       setHistoryIndex(historyIndex - 1);
     }
-  };
+  }, [historyIndex, history]);
 
-  const redo = () => {
+  const redo = React.useCallback(() => {
     if (historyIndex < history.length - 1) {
-      const next = history[historyIndex + 1];
-      setBlocks(next.blocks);
-      setHulls(next.hulls);
+      const nextState = history[historyIndex + 1];
+      setBlocks(nextState.blocks);
+      setHulls(nextState.hulls);
+      setWalls(nextState.walls);
       setHistoryIndex(historyIndex + 1);
     }
-  };
+  }, [historyIndex, history]);
 
   useEffect(() => {
     const handleKeys = (e) => {
@@ -59,6 +72,7 @@ const App = () => {
       if (e.key === '4') setMode(MODES.HULL);
       if (e.key === '5') setMode(MODES.EDIT); 
       if (e.key === '6') setMode(MODES.SUB_HULL); 
+      if (e.key === '7') setMode(MODES.WALL); 
       
       // Undo/Redo
       if (e.ctrlKey && e.key === 'z') {
@@ -72,7 +86,7 @@ const App = () => {
     };
     window.addEventListener('keydown', handleKeys);
     return () => window.removeEventListener('keydown', handleKeys);
-  }, [historyIndex, history]);
+  }, [undo, redo]);
 
   return (
     <div className="app-root">
@@ -91,6 +105,8 @@ const App = () => {
           setBlocks={setBlocks}
           hulls={hulls}
           setHulls={setHulls}
+          walls={walls}
+          setWalls={setWalls}
           saveToHistory={saveToHistory}
         />
         <HUD camera={logic.camera} mode={mode} />

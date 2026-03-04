@@ -11,7 +11,7 @@ const Sidebar = ({ mode, setMode, selected, setSelected }) => (
       <button className={mode === MODES.HULL ? 'active' : ''} onClick={() => setMode(MODES.HULL)}>HULL (4)</button>
       <button className={mode === MODES.EDIT ? 'active' : ''} onClick={() => setMode(MODES.EDIT)}>EDIT (5)</button>
       <button className={mode === MODES.SUB_HULL ? 'active' : ''} onClick={() => setMode(MODES.SUB_HULL)}>SUB_HULL (6)</button>
-      
+      <button className={mode === MODES.WALL ? 'active' : ''} onClick={() => setMode(MODES.WALL)}>WALL (7)</button>
     </div>
     
     <h4 style={{ margin: '10px 0 5px 0', fontSize: '12px', color: '#666' }}>EQUIPMENT</h4>
@@ -23,7 +23,7 @@ const Sidebar = ({ mode, setMode, selected, setSelected }) => (
           onClick={() => setSelected(t)}
         >
           <img src={t.svgUrl} alt={t.name} />
-          <span style={{ textAlign: 'center' }}>{t.name}</span>
+          <span style={{ textAlign: 'center', lineHeight: '1.1' }}>{t.name}</span>
         </div>
       ))}
     </div>

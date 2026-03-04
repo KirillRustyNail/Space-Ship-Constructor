@@ -14,9 +14,12 @@ const Sidebar = ({ mode, setMode, selected, setSelected }) => (
 
     </div>
     <div className="templates">
+      <h4 style={{ marginBottom: '10px', fontSize: '0.9rem', color: '#666' }}>TEMPLATES</h4>
       {BLOCK_TEMPLATES.map(t => (
-        <div key={t.id} className={`item ${selected.id === t.id ? 'sel' : ''}`} onClick={() => setSelected(t)}>
-          {t.name}
+        <div key={t.id} className={`item ${selected.id === t.id ? 'sel' : ''}`} onClick={() => setSelected(t)}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <img src={t.svgUrl} style={{ width: '30px', height: '30px', objectFit: 'contain' }} alt={t.name} />
+          <span>{t.name}</span>
         </div>
       ))}
     </div>

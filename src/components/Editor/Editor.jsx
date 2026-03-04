@@ -1,51 +1,56 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import ClipperLib from 'clipper-lib';
 import { CELL_SIZE, COLORS, MODES, BLOCK_TEMPLATES } from '../../constants';
 import HullLayer from './HullLayer';
 import './Editor.css';
 
 const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks }) => {
-  const { camera, setCamera, setAnchorPoint, anchorPoint, screenToWorld, handleZoom, centerOnAnchor } = logic;
+  const { camera, setCamera, setAnchorPoint, anchorPoint, screenToWorld, handleZoom } = logic;
   const containerRef = useRef(null);
 
   const [isPanning, setIsPanning] = useState(false);
   const [hoveredCell, setHoveredCell] = useState(null);
   const [mouseWorld, setMouseWorld] = useState({ x: 0, y: 0 });
+  const [currentRotation, setCurrentRotation] = useState(0); // 0, 90, 180, 270
   
-  const [hulls, setHulls] = useState([]); // [{id, nodes: [{x, y, isRounded}]}]
+  const [hulls, setHulls] = useState([]);
   const [currentHull, setCurrentHull] = useState([]);
   const [draggingNode, setDraggingNode] = useState(null);
 
-  // ПРОВЕРКА ПЕРЕСЕЧЕНИЯ БЛОКОВ (СОХРАНЕНА)
-  const checkCollision = (bx, by, bw, bh) => {
-    const r1 = { x1: bx, y1: by, x2: bx + bw * CELL_SIZE, y2: by + bh * CELL_SIZE };
+  const getEffectiveSize = (template, rotation) => {
+    const isRotated = rotation === 90 || rotation === 270;
+    return {
+      w: isRotated ? template.h : template.w,
+      h: isRotated ? template.w : template.h
+    };
+  };
+
+  const checkCollision = (bx, by, template, rotation) => {
+    const size = getEffectiveSize(template, rotation);
+    const r1 = { x1: bx, y1: by, x2: bx + size.w * CELL_SIZE, y2: by + size.h * CELL_SIZE };
+    
     return blocks.some(b => {
       const t = BLOCK_TEMPLATES.find(temp => temp.id === b.type);
-      const r2 = { x1: b.x, y1: b.y, x2: b.x + t.w * CELL_SIZE, y2: b.y + t.h * CELL_SIZE };
+      const bSize = getEffectiveSize(t, b.rotation || 0);
+      const r2 = { x1: b.x, y1: b.y, x2: b.x + bSize.w * CELL_SIZE, y2: b.y + bSize.h * CELL_SIZE };
       return r1.x1 < r2.x2 && r1.x2 > r2.x1 && r1.y1 < r2.y2 && r1.y2 > r2.y1;
     });
   };
 
-  // ФУНКЦИЯ СОХРАНЕНИЯ СТАТУСА УЗЛОВ
   const processBooleanHulls = (newPoints, isSubtract = false) => {
     const clipper = new ClipperLib.Clipper();
     const scale = 100;
-
-    // Собираем карту всех старых точек: "x,y" -> isRounded
     const metaMap = new Map();
     hulls.forEach(h => h.nodes.forEach(n => metaMap.set(`${n.x},${n.y}`, n.isRounded)));
-    // Добавляем текущие точки (все новые по умолчанию false, если не было скруглено ранее)
     newPoints.forEach(p => metaMap.set(`${p.x},${p.y}`, p.isRounded || false));
 
     hulls.forEach(h => {
       clipper.AddPath(h.nodes.map(p => ({ X: p.x * scale, Y: p.y * scale })), ClipperLib.PolyType.ptSubject, true);
     });
-
     clipper.AddPath(newPoints.map(p => ({ X: p.x * scale, Y: p.y * scale })), ClipperLib.PolyType.ptClip, true);
     
     const solution = new ClipperLib.Paths();
     const clipType = isSubtract ? ClipperLib.ClipType.ctDifference : ClipperLib.ClipType.ctUnion;
-    
     clipper.Execute(clipType, solution, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
     
     setHulls(solution.map(path => ({
@@ -53,7 +58,6 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks }) => {
       nodes: path.map(p => {
         const x = p.X / scale;
         const y = p.Y / scale;
-        // Проверяем, была ли такая точка раньше и было ли у нее скругление
         return { x, y, isRounded: metaMap.get(`${x},${y}`) || false };
       })
     })));
@@ -68,7 +72,11 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks }) => {
     const gy = Math.round(world.y / CELL_SIZE) * CELL_SIZE;
 
     if (e.button === 2) {
-      setAnchorPoint({ x: gx, y: gy });
+      if (mode === MODES.ADD) {
+        setCurrentRotation(r => (r + 90) % 360);
+      } else {
+        setAnchorPoint({ x: gx, y: gy });
+      }
       return;
     }
 
@@ -83,13 +91,21 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks }) => {
       } else if (mode === MODES.ADD) {
         const bx = Math.floor(world.x / CELL_SIZE) * CELL_SIZE;
         const by = Math.floor(world.y / CELL_SIZE) * CELL_SIZE;
-        if (!checkCollision(bx, by, selectedTemplate.w, selectedTemplate.h)) {
-          setBlocks([...blocks, { id: Date.now(), x: bx, y: by, type: selectedTemplate.id }]);
+        if (!checkCollision(bx, by, selectedTemplate, currentRotation)) {
+          setBlocks([...blocks, { 
+            id: Date.now(), 
+            x: bx, 
+            y: by, 
+            type: selectedTemplate.id,
+            rotation: currentRotation
+          }]);
         }
       } else if (mode === MODES.DELETE) {
         setBlocks(blocks.filter(b => {
           const t = BLOCK_TEMPLATES.find(temp => temp.id === b.type);
-          return !(mouseWorld.x >= b.x && mouseWorld.x <= b.x + t.w * CELL_SIZE && mouseWorld.y >= b.y && mouseWorld.y <= b.y + t.h * CELL_SIZE);
+          const size = getEffectiveSize(t, b.rotation || 0);
+          return !(mouseWorld.x >= b.x && mouseWorld.x <= b.x + size.w * CELL_SIZE && 
+                   mouseWorld.y >= b.y && mouseWorld.y <= b.y + size.h * CELL_SIZE);
         }));
       }
     }
@@ -127,8 +143,48 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks }) => {
         backgroundImage: `linear-gradient(to right, ${COLORS.grid} 1px, transparent 1px), linear-gradient(to bottom, ${COLORS.grid} 1px, transparent 1px)`
       }}>
       <div className="world-layer" style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})` }}>
+        {/* Layer 1: Hull background (bottom) */}
+        <HullLayer 
+          hulls={hulls} 
+          currentHull={[]} 
+          mode={mode} 
+          layer="background" 
+        />
+
+        {/* Layer 2: Blocks (middle) */}
+        {blocks.map(b => {
+          const t = BLOCK_TEMPLATES.find(temp => temp.id === b.type);
+          const size = getEffectiveSize(t, b.rotation || 0);
+          return (
+            <div key={b.id} className="block" style={{ 
+              left: b.x, 
+              top: b.y, 
+              width: size.w * CELL_SIZE, 
+              height: size.h * CELL_SIZE,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'visible'
+            }}>
+              <img 
+                src={t.svgUrl} 
+                alt={t.name}
+                style={{
+                  width: t.w * CELL_SIZE,
+                  height: t.h * CELL_SIZE,
+                  transform: `rotate(${b.rotation || 0}deg)`,
+                  pointerEvents: 'none',
+                  flexShrink: 0
+                }}
+              />
+            </div>
+          );
+        })}
+
+        {/* Layer 3: Hull interface (top) */}
         <HullLayer 
           hulls={hulls} currentHull={currentHull} mode={mode} 
+          layer="interface"
           onNodeMouseDown={(e, h, n) => { e.stopPropagation(); setDraggingNode({hIdx: h, nIdx: n}); }}
           onNodeClick={(hIdx, nIdx) => {
             const newHulls = [...hulls];
@@ -142,13 +198,30 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks }) => {
             setHulls(newHulls);
           }}
         />
-        {blocks.map(b => {
-          const t = BLOCK_TEMPLATES.find(temp => temp.id === b.type);
-          return <div key={b.id} className="block" style={{ left: b.x, top: b.y, width: t.w * CELL_SIZE, height: t.h * CELL_SIZE, backgroundColor: t.color }} />;
-        })}
+
         {mode === MODES.ADD && hoveredCell && (
-          <div className={`ghost-block ${checkCollision(hoveredCell.x, hoveredCell.y, selectedTemplate.w, selectedTemplate.h) ? 'invalid' : ''}`}
-            style={{ left: hoveredCell.x, top: hoveredCell.y, width: selectedTemplate.w * CELL_SIZE, height: selectedTemplate.h * CELL_SIZE }} />
+          <div className={`ghost-block ${checkCollision(hoveredCell.x, hoveredCell.y, selectedTemplate, currentRotation) ? 'invalid' : ''}`}
+            style={{ 
+              left: hoveredCell.x, 
+              top: hoveredCell.y, 
+              width: getEffectiveSize(selectedTemplate, currentRotation).w * CELL_SIZE, 
+              height: getEffectiveSize(selectedTemplate, currentRotation).h * CELL_SIZE,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+             <img 
+                src={selectedTemplate.svgUrl} 
+                alt="ghost"
+                style={{
+                  width: selectedTemplate.w * CELL_SIZE,
+                  height: selectedTemplate.h * CELL_SIZE,
+                  transform: `rotate(${currentRotation}deg)`,
+                  opacity: 0.6,
+                  pointerEvents: 'none'
+                }}
+              />
+          </div>
         )}
         {anchorPoint && <div className="anchor-point" style={{ left: anchorPoint.x, top: anchorPoint.y, width: CELL_SIZE, height: CELL_SIZE }} />}
       </div>

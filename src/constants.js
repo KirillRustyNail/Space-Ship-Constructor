@@ -16,11 +16,13 @@ export const MODES = {
   EDIT: 'EDIT'
 };
 
+
 export const BLOCK_TEMPLATES = [
-  { id: 'hull_1x1', name: 'Блок 1x1', w: 1, h: 1, color: '#3a86ff' },
-  { id: 'hull_2x2', name: 'Кабина 2x2', w: 2, h: 2, color: '#00b4d8' },
-  { id: 'engine_1x2', name: 'Двигатель 1x2', w: 1, h: 2, color: '#fb8500' },
-  { id: 'wing_3x1', name: 'Крыло 3x1', w: 3, h: 1, color: '#8e9aaf' },
+  { id: 'hull_1x1', name: 'Блок 1x1', w: 1, h: 1, color: '#3a86ff', svgUrl: 'src/blocks/cabin_2x2.svg' },
+  { id: 'hull_2x2', name: 'Кабина 2x2', w: 2, h: 2, color: '#00b4d8', svgUrl: 'src/blocks/cabin_2x2.svg' },
+  { id: 'engine_1x2', name: 'Двигатель 1x2', w: 1, h: 2, color: '#fb8500', svgUrl: 'src/blocks/engine_1x2.svg' },
+  { id: 'wing_3x1', name: 'Крыло 3x1', w: 3, h: 1, color: '#8e9aaf', svgUrl: 'src/blocks/wing_3x1.svg' },
+  { id: 'test_5x5', name: 'Тест 5x5', w: 3, h: 3, color: '#8b1414', svgUrl: 'src/blocks/accelerate-svgrepo-com.svg' },
 ];
 
 export const COLORS = {

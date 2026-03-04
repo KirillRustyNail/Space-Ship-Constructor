@@ -11,7 +11,7 @@
 .ghost-block { 
   position: absolute; 
   box-sizing: border-box; 
-  border: 2px solid #219ebc; 
+  border: 1px solid #219dbc27; 
   background: rgba(33, 158, 188, 0.2); 
   pointer-events: none; 
 }
@@ -40,6 +40,14 @@
 .block { 
   position: absolute; 
   box-sizing: border-box; 
-  border: 1px solid rgba(0,0,0,0.1); 
+  border: none;
   pointer-events: auto; 
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.block img, .ghost-block img {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }

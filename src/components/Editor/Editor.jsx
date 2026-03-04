@@ -4,7 +4,7 @@ import { CELL_SIZE, COLORS, MODES, BLOCK_TEMPLATES } from '../../constants';
 import HullLayer from './HullLayer';
 import './Editor.css';
 
-const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks }) => {
+const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHulls, saveToHistory }) => {
   const { camera, setCamera, setAnchorPoint, anchorPoint, screenToWorld, handleZoom } = logic;
   const containerRef = useRef(null);
 
@@ -13,7 +13,6 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks }) => {
   const [mouseWorld, setMouseWorld] = useState({ x: 0, y: 0 });
   const [currentRotation, setCurrentRotation] = useState(0); // 0, 90, 180, 270
   
-  const [hulls, setHulls] = useState([]);
   const [currentHull, setCurrentHull] = useState([]);
   const [draggingNode, setDraggingNode] = useState(null);
 
@@ -53,14 +52,17 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks }) => {
     const clipType = isSubtract ? ClipperLib.ClipType.ctDifference : ClipperLib.ClipType.ctUnion;
     clipper.Execute(clipType, solution, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
     
-    setHulls(solution.map(path => ({
+    const newHulls = solution.map(path => ({
       id: Math.random(),
       nodes: path.map(p => {
         const x = p.X / scale;
         const y = p.Y / scale;
         return { x, y, isRounded: metaMap.get(`${x},${y}`) || false };
       })
-    })));
+    }));
+
+    setHulls(newHulls);
+    saveToHistory(blocks, newHulls);
   };
 
   const handleMouseDown = (e) => {
@@ -92,21 +94,27 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks }) => {
         const bx = Math.floor(world.x / CELL_SIZE) * CELL_SIZE;
         const by = Math.floor(world.y / CELL_SIZE) * CELL_SIZE;
         if (!checkCollision(bx, by, selectedTemplate, currentRotation)) {
-          setBlocks([...blocks, { 
+          const newBlocks = [...blocks, { 
             id: Date.now(), 
             x: bx, 
             y: by, 
             type: selectedTemplate.id,
             rotation: currentRotation
-          }]);
+          }];
+          setBlocks(newBlocks);
+          saveToHistory(newBlocks, hulls);
         }
       } else if (mode === MODES.DELETE) {
-        setBlocks(blocks.filter(b => {
+        const newBlocks = blocks.filter(b => {
           const t = BLOCK_TEMPLATES.find(temp => temp.id === b.type);
           const size = getEffectiveSize(t, b.rotation || 0);
           return !(mouseWorld.x >= b.x && mouseWorld.x <= b.x + size.w * CELL_SIZE && 
                    mouseWorld.y >= b.y && mouseWorld.y <= b.y + size.h * CELL_SIZE);
-        }));
+        });
+        if (newBlocks.length !== blocks.length) {
+          setBlocks(newBlocks);
+          saveToHistory(newBlocks, hulls);
+        }
       }
     }
   };
@@ -118,7 +126,7 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks }) => {
     if (isPanning) setCamera(c => ({ ...c, x: c.x + e.movementX, y: c.y + e.movementY }));
     
     if (draggingNode && mode === MODES.EDIT) {
-      const newHulls = [...hulls];
+      const newHulls = JSON.parse(JSON.stringify(hulls));
       const hull = newHulls[draggingNode.hIdx];
       if (hull) {
         hull.nodes[draggingNode.nIdx].x = Math.round(world.x / CELL_SIZE) * CELL_SIZE;
@@ -135,7 +143,13 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks }) => {
     <div className="editor-container" ref={containerRef}
       onWheel={(e) => handleZoom(e, containerRef)}
       onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
-      onMouseUp={() => { setIsPanning(false); setDraggingNode(null); }}
+      onMouseUp={() => { 
+        setIsPanning(false); 
+        if (draggingNode) {
+          saveToHistory(blocks, hulls);
+        }
+        setDraggingNode(null); 
+      }}
       onContextMenu={e => e.preventDefault()}
       style={{
         backgroundSize: `${CELL_SIZE * camera.scale}px ${CELL_SIZE * camera.scale}px`,
@@ -187,15 +201,17 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks }) => {
           layer="interface"
           onNodeMouseDown={(e, h, n) => { e.stopPropagation(); setDraggingNode({hIdx: h, nIdx: n}); }}
           onNodeClick={(hIdx, nIdx) => {
-            const newHulls = [...hulls];
+            const newHulls = JSON.parse(JSON.stringify(hulls));
             newHulls[hIdx].nodes[nIdx].isRounded = !newHulls[hIdx].nodes[nIdx].isRounded;
             setHulls(newHulls);
+            saveToHistory(blocks, newHulls);
           }}
           onNodeDelete={(hIdx, nIdx) => {
-            const newHulls = [...hulls];
+            let newHulls = JSON.parse(JSON.stringify(hulls));
             newHulls[hIdx].nodes.splice(nIdx, 1);
             if (newHulls[hIdx].nodes.length < 3) newHulls.splice(hIdx, 1);
             setHulls(newHulls);
+            saveToHistory(blocks, newHulls);
           }}
         />
 
@@ -210,7 +226,7 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks }) => {
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-             <img 
+            <img 
                 src={selectedTemplate.svgUrl} 
                 alt="ghost"
                 style={{

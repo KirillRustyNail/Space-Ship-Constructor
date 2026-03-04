@@ -1,6 +1,7 @@
 export const GRID_SIZE_MM = 5;
 export const PX_PER_MM = 3.78;
 export const CELL_SIZE = Math.round(GRID_SIZE_MM * PX_PER_MM);
+export const MAX_HISTORY = 20;
 
 export const ZOOM_CONFIG = {
   MIN: 0.5,

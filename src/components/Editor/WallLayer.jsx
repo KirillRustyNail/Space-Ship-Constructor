@@ -1,12 +1,12 @@
 import React from 'react';
 import { MODES } from '../../constants';
 
-const WallLayer = ({ walls, currentWall = [], mode, layer, hoveredCell, onNodeMouseDown, onNodeDelete }) => {
+const WallLayer = ({ walls = [], currentWall = [], mode, layer, hoveredCell, onNodeMouseDown, onNodeDelete }) => {
   return (
     <svg className="hulls-svg-layer" style={{ pointerEvents: 'none' }}>
       {layer === 'background' && (
         <g className="walls-layer">
-          {walls.map(wall => (
+          {(walls || []).map(wall => (
             <polyline
               key={wall.id}
               points={wall.nodes.map(p => `${p.x},${p.y}`).join(' ')}
@@ -15,20 +15,21 @@ const WallLayer = ({ walls, currentWall = [], mode, layer, hoveredCell, onNodeMo
           ))}
           {/* Elastic line while drawing */}
           {mode === MODES.WALL && currentWall.length === 1 && hoveredCell && (
-            <line 
+             <line 
                 x1={currentWall[0].x} y1={currentWall[0].y}
                 x2={hoveredCell.x} y2={hoveredCell.y}
                 className="wall-line active-wall-line"
                 style={{ strokeOpacity: 0.6, strokeDasharray: '4,4' }}
-            />
+             />
           )}
         </g>
       )}
+
       {layer === 'interface' && (
         <>
           {mode === MODES.EDIT && (
             <g style={{ pointerEvents: 'auto' }}>
-              {walls.map((wall, wIdx) => (
+              {(walls || []).map((wall, wIdx) => (
                 wall.nodes.map((p, nIdx) => (
                   <circle
                     key={`wall-${wall.id}-${nIdx}`}

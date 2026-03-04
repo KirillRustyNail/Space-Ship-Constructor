@@ -22,19 +22,20 @@ const App = () => {
 
   const saveToHistory = (newBlocks, newHulls, newWalls) => {
     const nextState = { 
-      blocks: newBlocks !== undefined ? newBlocks : blocks, 
-      hulls: newHulls !== undefined ? newHulls : hulls,
-      walls: newWalls !== undefined ? newWalls : walls
+      blocks: JSON.parse(JSON.stringify(newBlocks !== undefined ? newBlocks : blocks)), 
+      hulls: JSON.parse(JSON.stringify(newHulls !== undefined ? newHulls : hulls)),
+      walls: JSON.parse(JSON.stringify(newWalls !== undefined ? newWalls : walls))
     };
     
-    const currentSerialized = JSON.stringify(history[historyIndex]);
-    const nextSerialized = JSON.stringify(nextState);
-
-    if (currentSerialized === nextSerialized) return;
-
+    const currentState = history[historyIndex];
+    if (currentState) {
+      const currentSerialized = JSON.stringify(currentState);
+      const nextSerialized = JSON.stringify(nextState);
+      if (currentSerialized === nextSerialized) return;
+    }
+    // Slice history up to the current point, discarding redo history
     let newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(nextState);
-    
 
     if (newHistory.length > MAX_HISTORY + 1) {
       newHistory = newHistory.slice(newHistory.length - 11);

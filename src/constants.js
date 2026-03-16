@@ -15,21 +15,28 @@ export const MODES = {
   HULL: 'HULL',
   SUB_HULL: 'SUB_HULL', // Новый режим
   EDIT: 'EDIT',
-  WALL: 'WALL'
+  WALL: 'WALL',
+  DOOR: 'DOOR'
 };
 
 
 export const BLOCK_TEMPLATES = [
-  { id: 'hull_1x1', name: 'Блок 1x1', w: 1, h: 1, svgUrl: 'src/blocks/cabin_2x2.svg' },
-  { id: 'hull_2x2', name: 'Кабина 2x2', w: 2, h: 2, svgUrl: 'src/blocks/cabin_2x2.svg' },
-  { id: 'engine_1x2', name: 'Двигатель 1x2', w: 1, h: 2, svgUrl: 'src/blocks/engine_1x2.svg' },
-  { id: 'wing_3x1', name: 'Крыло 3x1', w: 3, h: 1, svgUrl: 'src/blocks/wing_3x1.svg' },
-  { id: 'test_5x5', name: 'Тест 5x5', w: 3, h: 3, svgUrl: 'src/blocks/accelerate-svgrepo-com.svg' },
+  { id: 'hull_1x1', name: 'Блок 1x1', type: 'block', w: 1, h: 1, svgUrl: 'src/blocks/cabin_2x2.svg' },
+  { id: 'hull_2x2', name: 'Кабина 2x2',  type: 'block', w: 2, h: 2, svgUrl: 'src/blocks/cabin_2x2.svg' },
+  { id: 'engine_1x2', name: 'Двигатель 1x2', type: 'block', w: 1, h: 2, svgUrl: 'src/blocks/engine_1x2.svg' },
+  { id: 'wing_3x1', name: 'Крыло 3x1',  type: 'block', w: 3, h: 1, svgUrl: 'src/blocks/wing_3x1.svg' },
+  { id: 'test_5x5', name: 'Тест 5x5',  type: 'block', w: 3, h: 3, svgUrl: 'src/blocks/accelerate-svgrepo-com.svg' },
+  { id: 'door_v1', name: 'Дверь Стандарт', type: 'door', w: 1, h: 1,  svgUrl: 'src/blocks/doors/door1.svg' },
+  { id: 'door_v2', name: 'Дверь Герметик', type: 'door', w: 2, h: 1,  svgUrl: 'src/blocks/doors/door2.svg' },
+  { id: 'door_v3', name: 'Дверь Герметик', type: 'door', w: 10, h: 10,  svgUrl: 'src/blocks/doors/door3.svg' },
+
 ];
 
 export const COLORS = {
   space: '#ffffff',
   grid: 'rgba(0, 0, 0, 0.08)',
   accent: '#219ebc',
-  anchor: '#e63946'
+  anchor: '#e63946',
+  wall: '#457b9d',
+  door: '#ffca3a'
 };

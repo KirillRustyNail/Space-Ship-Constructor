@@ -7,11 +7,13 @@ const WallLayer = ({ walls = [], currentWall = [], mode, layer, hoveredCell, onN
       {layer === 'background' && (
         <g className="walls-layer">
           {(walls || []).map(wall => (
-            <polyline
-              key={wall.id}
-              points={wall.nodes.map(p => `${p.x},${p.y}`).join(' ')}
-              className="wall-line"
-            />
+            wall && wall.nodes && (
+              <polyline
+                key={wall.id}
+                points={wall.nodes.map(p => `${p.x},${p.y}`).join(' ')}
+                className="wall-line"
+              />
+            )
           ))}
           {/* Elastic line while drawing */}
           {mode === MODES.WALL && currentWall.length === 1 && hoveredCell && (

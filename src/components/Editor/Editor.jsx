@@ -1,12 +1,21 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef} from 'react';
 import ClipperLib from 'clipper-lib';
 import { CELL_SIZE, COLORS, MODES, BLOCK_TEMPLATES } from '../../constants';
 import HullLayer from './HullLayer';
 import WallLayer from './WallLayer';
+import DoorLayer from './DoorLayer';
 import './Editor.css';
 
-const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHulls, walls, setWalls, saveToHistory }) => {
-  const { camera, setCamera, setAnchorPoint, anchorPoint, screenToWorld, handleZoom } = logic;
+// Helper for generating IDs outside the component to satisfy purity rules
+const generateId = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `id-${Date.now()}-${Math.random()}`;
+};
+
+const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHulls, walls, setWalls, doors, setDoors, saveToHistory }) => {
+  const { camera, setCamera, setAnchorPoint, screenToWorld, handleZoom } = logic;
   const containerRef = useRef(null);
 
   const [isPanning, setIsPanning] = useState(false);
@@ -27,8 +36,9 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
 
   const checkCollision = (bx, by, bw, bh) => {
     const r1 = { x1: bx, y1: by, x2: bx + bw * CELL_SIZE, y2: by + bh * CELL_SIZE };
-    return blocks.some(b => {
+    return (blocks || []).some(b => {
       const t = BLOCK_TEMPLATES.find(temp => temp.id === b.type);
+      if (!t) return false;
       const eff = getEffectiveSize(t, b.rotation || 0);
       const r2 = { x1: b.x, y1: b.y, x2: b.x + eff.w * CELL_SIZE, y2: b.y + eff.h * CELL_SIZE };
       return r1.x1 < r2.x2 && r1.x2 > r2.x1 && r1.y1 < r2.y2 && r1.y2 > r2.y1;
@@ -55,7 +65,7 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
     clipper.Execute(clipType, solution, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
     
     const nextHulls = solution.map(path => ({
-      id: Math.random(),
+      id: generateId(),
       nodes: path.map(p => {
         const x = p.X / scale;
         const y = p.Y / scale;
@@ -64,7 +74,39 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
     }));
 
     setHulls(nextHulls);
-    saveToHistory(blocksRef.current, nextHulls, wallsRef.current);
+    saveToHistory(blocks, nextHulls, walls, doors);
+  };
+
+  const findNearestWallPoint = (mx, my) => {
+    let best = null;
+    let minDist = Infinity;
+    
+    (walls || []).forEach(wall => {
+      if (!wall.nodes) return;
+      for (let i = 1; i < wall.nodes.length; i++) {
+        const p1 = wall.nodes[i - 1];
+        const p2 = wall.nodes[i];
+        
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const L2 = dx*dx + dy*dy;
+        if (L2 === 0) continue;
+        
+        let t = ((mx - p1.x) * dx + (my - p1.y) * dy) / L2;
+        t = Math.max(0, Math.min(1, t));
+        
+        const px = p1.x + t * dx;
+        const py = p1.y + t * dy;
+        const d = Math.hypot(mx - px, my - py);
+        
+        if (d < minDist && d < 30) {
+          minDist = d;
+          const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+          best = { x: px, y: py, angle, wallId: wall.id, p1Idx: i - 1, p2Idx: i, t };
+        }
+      }
+    });
+    return best;
   };
 
   const handleMouseDown = (e) => {
@@ -98,38 +140,52 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
         } else {
           const p1 = currentWall[0];
           const p2 = { x: gx, y: gy };
-          // Only create wall if points are different
+
           if (p1.x !== p2.x || p1.y !== p2.y) {
-            const newWall = { id: Math.random(), nodes: [p1, p2] };
-            const nextWalls = JSON.parse(JSON.stringify(wallsRef.current));
-            nextWalls.push(newWall);
+            const newWall = { id: generateId(), nodes: [p1, p2] };
+            const nextWalls = [...walls, newWall];
             setWalls(nextWalls);
-            saveToHistory(blocksRef.current, hullsRef.current, nextWalls);
+            saveToHistory(blocks, hulls, nextWalls, doors);
           }
           setCurrentWall([]);
+        }
+      } else if (mode === MODES.DOOR) {
+        const best = findNearestWallPoint(world.x, world.y);
+        if (best) {
+          const nextDoors = [...doors, { 
+            id: generateId(), 
+            type: selectedTemplate.id,
+            svgUrl: selectedTemplate.svgUrl,
+            w: selectedTemplate.w || 1,
+            h: selectedTemplate.h || 1,
+            ...best 
+          }];
+          setDoors(nextDoors);
+          saveToHistory(blocks, hulls, walls, nextDoors);
         }
       } else if (mode === MODES.ADD) {
         const bx = Math.floor(world.x / CELL_SIZE) * CELL_SIZE;
         const by = Math.floor(world.y / CELL_SIZE) * CELL_SIZE;
         const eff = getEffectiveSize(selectedTemplate, currentRotation);
         if (!checkCollision(bx, by, eff.w, eff.h)) {
-          const newBlock = { id: Date.now(), x: bx, y: by, type: selectedTemplate.id, rotation: currentRotation };
-          const nextBlocks = JSON.parse(JSON.stringify(blocksRef.current));
-          nextBlocks.push(newBlock);
+          const newBlock = { id: generateId(), x: bx, y: by, type: selectedTemplate.id, rotation: currentRotation };
+          const nextBlocks = [...blocks, newBlock];
           setBlocks(nextBlocks);
-          saveToHistory(nextBlocks, hullsRef.current, wallsRef.current);
+          saveToHistory(nextBlocks, hulls, walls, doors);
         }
       } else if (mode === MODES.DELETE) {
         let changed = false;
-        const nextBlocks = blocksRef.current.filter(b => {
+        const nextBlocks = (blocks || []).filter(b => {
           const t = BLOCK_TEMPLATES.find(temp => temp.id === b.type);
+          if (!t) return true;
           const eff = getEffectiveSize(t, b.rotation || 0);
           const match = (mouseWorld.x >= b.x && mouseWorld.x <= b.x + eff.w * CELL_SIZE && mouseWorld.y >= b.y && mouseWorld.y <= b.y + eff.h * CELL_SIZE);
           if (match) changed = true;
           return !match;
         });
 
-        const nextWalls = wallsRef.current.filter(wall => {
+        const nextWalls = (walls || []).filter(wall => {
+            if (!wall.nodes) return true;
             const isClickNearLine = wall.nodes.some((p, i) => {
                 if (i === 0) return false;
                 const p1 = wall.nodes[i - 1];
@@ -145,23 +201,24 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
             return !isClickNearLine;
         });
 
+        const deletedWallIds = (walls || []).filter(w => !nextWalls.includes(w)).map(w => w.id);
+        const nextDoors = (doors || []).filter(door => {
+          if (deletedWallIds.includes(door.wallId)) { changed = true; return false; }
+          const d = Math.hypot(mouseWorld.x - door.x, mouseWorld.y - door.y);
+          if (d < 15) { changed = true; return false; }
+          return true;
+        });
+
         if (changed) {
           setBlocks(nextBlocks);
           setWalls(nextWalls);
-          saveToHistory(nextBlocks, hullsRef.current, nextWalls);
+          setDoors(nextDoors);
+          saveToHistory(nextBlocks, hulls, nextWalls, nextDoors);
         }
       }
     }
   };
 
-  // Refs to track current state for history saving after drags
-  const hullsRef = useRef(hulls);
-  const wallsRef = useRef(walls);
-  const blocksRef = useRef(blocks);
-
-  useEffect(() => { hullsRef.current = hulls; }, [hulls]);
-  useEffect(() => { wallsRef.current = walls; }, [walls]);
-  useEffect(() => { blocksRef.current = blocks; }, [blocks]);
 
   const handleMouseMove = (e) => {
     const rect = containerRef.current.getBoundingClientRect();
@@ -170,7 +227,7 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
     if (isPanning) setCamera(c => ({ ...c, x: c.x + e.movementX, y: c.y + e.movementY }));
     
     if (draggingNode && mode === MODES.EDIT) {
-      const nextHulls = JSON.parse(JSON.stringify(hullsRef.current));
+      const nextHulls = JSON.parse(JSON.stringify(hulls));
       const hull = nextHulls[draggingNode.hIdx];
       if (hull) {
         hull.nodes[draggingNode.nIdx].x = Math.round(world.x / CELL_SIZE) * CELL_SIZE;
@@ -180,12 +237,37 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
     }
     
     if (draggingWallNode && mode === MODES.EDIT) {
-      const nextWalls = JSON.parse(JSON.stringify(wallsRef.current));
+      const nextWalls = JSON.parse(JSON.stringify(walls));
       const wall = nextWalls[draggingWallNode.wIdx];
       if (wall) {
-        wall.nodes[draggingWallNode.nIdx].x = Math.round(world.x / CELL_SIZE) * CELL_SIZE;
-        wall.nodes[draggingWallNode.nIdx].y = Math.round(world.y / CELL_SIZE) * CELL_SIZE;
-        setWalls(nextWalls);
+        const nx = Math.round(world.x / CELL_SIZE) * CELL_SIZE;
+        const ny = Math.round(world.y / CELL_SIZE) * CELL_SIZE;
+        
+        // Only update if moved to a new grid point
+        if (wall.nodes[draggingWallNode.nIdx].x !== nx || wall.nodes[draggingWallNode.nIdx].y !== ny) {
+          wall.nodes[draggingWallNode.nIdx].x = nx;
+          wall.nodes[draggingWallNode.nIdx].y = ny;
+          setWalls(nextWalls);
+
+          // Update doors attached to this wall
+          setDoors(prevDoors => (prevDoors || []).map(door => {
+            if (door.wallId === wall.id) {
+              const p1 = wall.nodes[door.p1Idx];
+              const p2 = wall.nodes[door.p2Idx];
+              if (p1 && p2) {
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                return {
+                  ...door,
+                  x: p1.x + door.t * dx,
+                  y: p1.y + door.t * dy,
+                  angle: Math.atan2(dy, dx) * (180 / Math.PI)
+                };
+              }
+            }
+            return door;
+          }));
+        }
       }
     }
 
@@ -195,7 +277,7 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
 
   const handleMouseUp = () => {
     if (draggingNode || draggingWallNode) {
-      saveToHistory(blocksRef.current, hullsRef.current, wallsRef.current);
+      saveToHistory(blocks, hulls, walls, doors);
     }
     setIsPanning(false); 
     setDraggingNode(null); 
@@ -221,9 +303,22 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
         {/* Layer 1.5: Walls */}
         <WallLayer layer="background" walls={walls} currentWall={currentWall} mode={mode} hoveredCell={hoveredCell} onNodeMouseDown={() => {}} />
 
+        {/* Layer 1.6: Doors */}
+        <DoorLayer 
+          doors={doors} 
+          mode={mode}
+          MODES={MODES}
+          onDoorDelete={(doorId) => {
+            const nextDoors = (doors || []).filter(d => d.id !== doorId);
+            setDoors(nextDoors);
+            saveToHistory(blocks, hulls, walls, nextDoors);
+          }} 
+        />
+
         {/* Layer 2: Blocks */}
-        {blocks.map(b => {
+        {(blocks || []).map(b => {
           const t = BLOCK_TEMPLATES.find(temp => temp.id === b.type);
+          if (!t) return null;
           const eff = getEffectiveSize(t, b.rotation || 0);
           return (
             <div key={b.id} className="block" 
@@ -265,23 +360,49 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
           </div>
         )}
 
+        {/* Ghost door for placement */}
+        {mode === MODES.DOOR && (
+          <svg className="hulls-svg-layer" style={{ pointerEvents: 'none' }}>
+            {(() => {
+              const best = findNearestWallPoint(mouseWorld.x, mouseWorld.y);
+              if (best) {
+                const w = selectedTemplate.w || 1;
+                const h = selectedTemplate.h || 1;
+                return (
+                  <g transform={`translate(${best.x}, ${best.y}) rotate(${best.angle})`}>
+                    <image 
+                      href={selectedTemplate.svgUrl} 
+                      x={-w * CELL_SIZE / 2} 
+                      y={-h * CELL_SIZE / 2} 
+                      width={w * CELL_SIZE} 
+                      height={h * CELL_SIZE}
+                      style={{ opacity: 0.6, pointerEvents: 'none' }}
+                    />
+                  </g>
+                );
+              }
+              return null;
+            })()}
+          </svg>
+        )}
+
         {/* Layer 3: HUD / Interface Layer */}
         <HullLayer 
           layer="interface"
           hulls={hulls} currentHull={currentHull} mode={mode} 
           onNodeMouseDown={(e, h, n) => { e.stopPropagation(); setDraggingNode({hIdx: h, nIdx: n}); }}
           onNodeClick={(hIdx, nIdx) => {
-            const nextHulls = JSON.parse(JSON.stringify(hullsRef.current));
+            const nextHulls = JSON.parse(JSON.stringify(hulls));
             nextHulls[hIdx].nodes[nIdx].isRounded = !nextHulls[hIdx].nodes[nIdx].isRounded;
             setHulls(nextHulls);
-            saveToHistory(blocksRef.current, nextHulls, wallsRef.current);
+            saveToHistory(blocks, nextHulls, walls, doors);
           }}
           onNodeDelete={(hIdx, nIdx) => {
-            let nextHulls = JSON.parse(JSON.stringify(hullsRef.current));
+            let nextHulls = JSON.parse(JSON.stringify(hulls));
             nextHulls[hIdx].nodes.splice(nIdx, 1);
             if (nextHulls[hIdx].nodes.length < 3) nextHulls.splice(hIdx, 1);
             setHulls(nextHulls);
-            saveToHistory(blocksRef.current, nextHulls, wallsRef.current);
+            saveToHistory(blocks, nextHulls, walls, doors);
           }}
         />
 
@@ -290,15 +411,14 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
             walls={walls} currentWall={currentWall} mode={mode}
             onNodeMouseDown={(e, w, n) => { e.stopPropagation(); setDraggingWallNode({wIdx: w, nIdx: n}); }}
             onNodeDelete={(wIdx, nIdx) => {
-              let nextWalls = JSON.parse(JSON.stringify(wallsRef.current));
+              let nextWalls = JSON.parse(JSON.stringify(walls));
               nextWalls[wIdx].nodes.splice(nIdx, 1);
               if (nextWalls[wIdx].nodes.length < 2) nextWalls.splice(wIdx, 1);
               setWalls(nextWalls);
-              saveToHistory(blocksRef.current, hullsRef.current, nextWalls);
+              saveToHistory(blocks, hulls, nextWalls, doors);
             }}
         />
 
-        {anchorPoint && <div className="anchor-point" style={{ left: anchorPoint.x, top: anchorPoint.y, width: CELL_SIZE, height: CELL_SIZE }} />}
       </div>
     </div>
   );

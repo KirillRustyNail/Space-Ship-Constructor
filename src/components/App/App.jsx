@@ -8,23 +8,36 @@ import './App.css';
 
 const App = () => {
   const logic = useEditorLogic();
-  const [mode, setMode] = useState(MODES.ADD);
+  const [mode, setInternalMode] = useState(MODES.ADD);
   const [selectedTemplate, setSelectedTemplate] = useState(BLOCK_TEMPLATES[0]);
+  
+  const setMode = (m) => {
+    setInternalMode(m);
+    if (m === MODES.DOOR) {
+      const firstDoor = BLOCK_TEMPLATES.find(t => t.type === 'door');
+      if (firstDoor) setSelectedTemplate(firstDoor);
+    } else if (m === MODES.ADD) {
+      const firstBlock = BLOCK_TEMPLATES.find(t => t.type === 'block');
+      if (firstBlock) setSelectedTemplate(firstBlock);
+    }
+  };
   
   // State
   const [blocks, setBlocks] = useState([]);
   const [hulls, setHulls] = useState([]);
   const [walls, setWalls] = useState([]); // [{id, nodes: [{x, y}]}]
-  
+  const [doors, setDoors] = useState([]);
+
   // History
-  const [history, setHistory] = useState([{ blocks: [], hulls: [] }]);
+  const [history, setHistory] = useState([{ blocks: [], hulls: [], walls: [], doors: [] }]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  const saveToHistory = (newBlocks, newHulls, newWalls) => {
+  const saveToHistory = (newBlocks, newHulls, newWalls, newDoors) => {
     const nextState = { 
       blocks: JSON.parse(JSON.stringify(newBlocks !== undefined ? newBlocks : blocks)), 
       hulls: JSON.parse(JSON.stringify(newHulls !== undefined ? newHulls : hulls)),
-      walls: JSON.parse(JSON.stringify(newWalls !== undefined ? newWalls : walls))
+      walls: JSON.parse(JSON.stringify(newWalls !== undefined ? newWalls : walls)),
+      doors: JSON.parse(JSON.stringify(newDoors !== undefined ? newDoors : doors))
     };
     
     const currentState = history[historyIndex];
@@ -51,6 +64,7 @@ const App = () => {
       setBlocks(prevState.blocks);
       setHulls(prevState.hulls);
       setWalls(prevState.walls);
+      setDoors(prevState.doors || []);
       setHistoryIndex(historyIndex - 1);
     }
   }, [historyIndex, history]);
@@ -61,6 +75,7 @@ const App = () => {
       setBlocks(nextState.blocks);
       setHulls(nextState.hulls);
       setWalls(nextState.walls);
+      setDoors(nextState.doors || []);
       setHistoryIndex(historyIndex + 1);
     }
   }, [historyIndex, history]);
@@ -74,6 +89,7 @@ const App = () => {
       if (e.key === '5') setMode(MODES.EDIT); 
       if (e.key === '6') setMode(MODES.SUB_HULL); 
       if (e.key === '7') setMode(MODES.WALL); 
+      if (e.key === '8') setMode(MODES.DOOR);
       
       // Undo/Redo
       if (e.ctrlKey && e.key === 'z') {
@@ -108,6 +124,8 @@ const App = () => {
           setHulls={setHulls}
           walls={walls}
           setWalls={setWalls}
+          doors = {doors}
+          setDoors={setDoors}
           saveToHistory={saveToHistory}
         />
         <HUD camera={logic.camera} mode={mode} />

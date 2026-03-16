@@ -1,12 +1,15 @@
 import React from 'react';
-import { CELL_SIZE } from '../../constants';
+import { CELL_SIZE, MODES } from '../../constants';
 
-const DoorLayer = ({ doors = [], onDoorDelete, mode, MODES }) => {
+const DoorLayer = ({ doors = [], onDoorDelete, mode, hoveredObject }) => {
   return (
     <svg className="hulls-svg-layer" style={{ pointerEvents: 'none' }}>
       <g className="doors-layer">
-        {(doors || []).map(door => (
-          door && (
+        {(doors || []).map(door => {
+          // Проверяем, наведена ли мышь на эту дверь в режиме удаления
+          const isHoveredForDelete = hoveredObject?.type === 'door' && hoveredObject.id === door.id;
+
+          return (
             <g 
               key={door.id} 
               transform={`translate(${door.x}, ${door.y}) rotate(${door.angle})`}
@@ -17,18 +20,25 @@ const DoorLayer = ({ doors = [], onDoorDelete, mode, MODES }) => {
                 y={-(door.h || 1) * CELL_SIZE / 2} 
                 width={(door.w || 1) * CELL_SIZE} 
                 height={(door.h || 1) * CELL_SIZE}
+                
+                // Класс подсветки
+                className={`door-image ${isHoveredForDelete ? 'delete-hover' : ''}`}
+                
+                // Важно для работы кликов внутри SVG с pointer-events: none у родителя
+                style={{ pointerEvents: 'auto', userSelect: 'none', cursor: 'pointer' }}
+                
+                // Удаление правой кнопкой в режиме DOOR
                 onContextMenu={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (mode === MODES.DOOR && onDoorDelete) {
-                    onDoorDelete(door.id);
+                  if (mode === MODES.DOOR) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (onDoorDelete) onDoorDelete(door.id);
                   }
                 }}
-                style={{ pointerEvents: 'auto', userSelect: 'none', cursor: 'pointer' }}
               />
             </g>
-          )
-        ))}
+          );
+        })}
       </g>
     </svg>
   );

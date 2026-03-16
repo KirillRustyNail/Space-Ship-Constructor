@@ -1,7 +1,16 @@
 import React from 'react';
 import { MODES } from '../../constants';
 
-const WallLayer = ({ walls = [], currentWall = [], mode, layer, hoveredCell, onNodeMouseDown, onNodeDelete }) => {
+const WallLayer = ({ 
+  walls = [], 
+  currentWall = [], 
+  mode, 
+  layer, 
+  hoveredCell, 
+  onNodeMouseDown, 
+  onNodeDelete, 
+  hoveredObject 
+}) => {
   return (
     <svg className="hulls-svg-layer" style={{ pointerEvents: 'none' }}>
       {layer === 'background' && (
@@ -11,7 +20,9 @@ const WallLayer = ({ walls = [], currentWall = [], mode, layer, hoveredCell, onN
               <polyline
                 key={wall.id}
                 points={wall.nodes.map(p => `${p.x},${p.y}`).join(' ')}
-                className="wall-line"
+                className={`wall-line ${
+                  hoveredObject?.type === 'wall' && hoveredObject.id === wall.id ? 'delete-hover' : ''
+                }`}
               />
             )
           ))}

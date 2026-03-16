@@ -27,19 +27,35 @@ const generatePathData = (nodes, radius = 15) => {
   return d + " Z ";
 };
 
-const HullLayer = ({ hulls, currentHull, mode, onNodeMouseDown, onNodeClick, onNodeDelete, layer = 'all' }) => {
+const HullLayer = ({ 
+  hulls, 
+  currentHull, 
+  mode, 
+  onNodeMouseDown, 
+  onNodeClick, 
+  onNodeDelete, 
+  layer = 'all', 
+  hoveredObject 
+}) => {
   return (
     <svg className="hulls-svg-layer">
-      {/* Background layer: Только заливка корпуса */}
+      {/* Background layer: Отрисовка самих мешей корпуса */}
       {(layer === 'all' || layer === 'background') && (
-        <path
-          d={hulls.map(h => generatePathData(h.nodes)).join(' ')}
-          className="hull-shape"
-          fillRule="evenodd"
-        />
+        <g>
+          {hulls.map(h => (
+            <path
+              key={h.id}
+              d={generatePathData(h.nodes)}
+              className={`hull-shape ${
+                hoveredObject?.type === 'hull' && hoveredObject.id === h.id ? 'delete-hover' : ''
+              }`}
+              fillRule="evenodd"
+            />
+          ))}
+        </g>
       )}
       
-      {/* Interface layer: Точки редактирования, активные линии и т.д. */}
+      {/* Interface layer: Точки редактирования, линии в процессе рисования */}
       {(layer === 'all' || layer === 'interface') && (
         <>
           {currentHull.length > 0 && (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Editor from '../../components/Editor/Editor';
 import Sidebar from '../../components/Sidebar/Sidebar';
+import DeleteToolBar from '../DeleteToolBar/DeleteToolBar';
 import HUD from '../../components/HUD/HUD';
 import { useEditorLogic } from '../../hooks/useEditorLogic';
 import { MODES, BLOCK_TEMPLATES, MAX_HISTORY } from '../../constants';
@@ -27,6 +28,10 @@ const App = () => {
   const [hulls, setHulls] = useState([]);
   const [walls, setWalls] = useState([]); // [{id, nodes: [{x, y}]}]
   const [doors, setDoors] = useState([]);
+
+   const [deleteConfig, setDeleteConfig] = useState({
+    blocks: true, hulls: false, walls: true, doors: true
+  });
 
   // History
   const [history, setHistory] = useState([{ blocks: [], hulls: [], walls: [], doors: [] }]);
@@ -113,6 +118,9 @@ const App = () => {
         selected={selectedTemplate} 
         setSelected={setSelectedTemplate} 
       />
+      {mode === MODES.DELETE && (
+        <DeleteToolBar config={deleteConfig} setConfig={setDeleteConfig} />
+      )}
       <div className="main-area">
         <Editor 
           logic={logic} 
@@ -127,6 +135,7 @@ const App = () => {
           doors = {doors}
           setDoors={setDoors}
           saveToHistory={saveToHistory}
+          deleteConfig={deleteConfig} 
         />
         <HUD camera={logic.camera} mode={mode} />
       </div>

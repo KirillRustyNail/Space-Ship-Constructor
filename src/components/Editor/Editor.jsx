@@ -14,7 +14,7 @@ const generateId = () => {
   return `id-${Date.now()}-${Math.random()}`;
 };
 
-const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHulls, walls, setWalls, doors, setDoors, saveToHistory }) => {
+const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHulls, walls, setWalls, doors, setDoors, saveToHistory, deleteConfig }) => {
   const { camera, setCamera, setAnchorPoint, screenToWorld, handleZoom } = logic;
   const containerRef = useRef(null);
 
@@ -27,6 +27,8 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
   const [currentWall, setCurrentWall] = useState([]);
   const [draggingNode, setDraggingNode] = useState(null); // {hIdx, nIdx} or {wIdx, nIdx}
   const [draggingWallNode, setDraggingWallNode] = useState(null);
+
+  const [hoveredObject, setHoveredObject] = useState(null);
 
   const getEffectiveSize = (template, rot) => {
     return (rot === 90 || rot === 270) 
@@ -44,6 +46,18 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
       return r1.x1 < r2.x2 && r1.x2 > r2.x1 && r1.y1 < r2.y2 && r1.y2 > r2.y1;
     });
   };
+
+  const isPointInPoly = (point, vs) => {
+    let x = point.x, y = point.y;
+    let inside = false;
+    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        let xi = vs[i].x, yi = vs[i].y;
+        let xj = vs[j].x, yj = vs[j].y;
+        let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+};
 
   const processBooleanHulls = (newPoints, isSubtract = false) => {
     const clipper = new ClipperLib.Clipper();
@@ -113,7 +127,7 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
     const rect = containerRef.current.getBoundingClientRect();
     const world = screenToWorld(e.clientX, e.clientY, rect);
     if (e.button === 1) return setIsPanning(true);
-    
+
     const gx = Math.round(world.x / CELL_SIZE) * CELL_SIZE;
     const gy = Math.round(world.y / CELL_SIZE) * CELL_SIZE;
 
@@ -128,7 +142,11 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
 
     if (e.button === 0) {
       if (mode === MODES.HULL || mode === MODES.SUB_HULL) {
-        if (currentHull.length >= 3 && Math.hypot(gx - currentHull[0].x, gy - currentHull[0].y) < CELL_SIZE / 2) {
+        if (
+          currentHull.length >= 3 &&
+          Math.hypot(gx - currentHull[0].x, gy - currentHull[0].y) <
+            CELL_SIZE / 2
+        ) {
           processBooleanHulls(currentHull, mode === MODES.SUB_HULL);
           setCurrentHull([]);
         } else {
@@ -152,14 +170,17 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
       } else if (mode === MODES.DOOR) {
         const best = findNearestWallPoint(world.x, world.y);
         if (best) {
-          const nextDoors = [...doors, { 
-            id: generateId(), 
-            type: selectedTemplate.id,
-            svgUrl: selectedTemplate.svgUrl,
-            w: selectedTemplate.w || 1,
-            h: selectedTemplate.h || 1,
-            ...best 
-          }];
+          const nextDoors = [
+            ...doors,
+            {
+              id: generateId(),
+              type: selectedTemplate.id,
+              svgUrl: selectedTemplate.svgUrl,
+              w: selectedTemplate.w || 1,
+              h: selectedTemplate.h || 1,
+              ...best,
+            },
+          ];
           setDoors(nextDoors);
           saveToHistory(blocks, hulls, walls, nextDoors);
         }
@@ -168,52 +189,47 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
         const by = Math.floor(world.y / CELL_SIZE) * CELL_SIZE;
         const eff = getEffectiveSize(selectedTemplate, currentRotation);
         if (!checkCollision(bx, by, eff.w, eff.h)) {
-          const newBlock = { id: generateId(), x: bx, y: by, type: selectedTemplate.id, rotation: currentRotation };
+          const newBlock = {
+            id: generateId(),
+            x: bx,
+            y: by,
+            type: selectedTemplate.id,
+            rotation: currentRotation,
+          };
           const nextBlocks = [...blocks, newBlock];
           setBlocks(nextBlocks);
           saveToHistory(nextBlocks, hulls, walls, doors);
         }
-      } else if (mode === MODES.DELETE) {
+      } else if (mode === MODES.DELETE && hoveredObject) {
+        let nextBlocks = [...blocks];
+        let nextHulls = [...hulls];
+        let nextWalls = [...walls];
+        let nextDoors = [...doors];
         let changed = false;
-        const nextBlocks = (blocks || []).filter(b => {
-          const t = BLOCK_TEMPLATES.find(temp => temp.id === b.type);
-          if (!t) return true;
-          const eff = getEffectiveSize(t, b.rotation || 0);
-          const match = (mouseWorld.x >= b.x && mouseWorld.x <= b.x + eff.w * CELL_SIZE && mouseWorld.y >= b.y && mouseWorld.y <= b.y + eff.h * CELL_SIZE);
-          if (match) changed = true;
-          return !match;
-        });
 
-        const nextWalls = (walls || []).filter(wall => {
-            if (!wall.nodes) return true;
-            const isClickNearLine = wall.nodes.some((p, i) => {
-                if (i === 0) return false;
-                const p1 = wall.nodes[i - 1];
-                const p2 = p;
-                const L2 = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
-                if (L2 === 0) return false;
-                const t = ((mouseWorld.x - p1.x) * (p2.x - p1.x) + (mouseWorld.y - p1.y) * (p2.y - p1.y)) / L2;
-                const tt = Math.max(0, Math.min(1, t));
-                const dist = Math.hypot(mouseWorld.x - (p1.x + tt * (p2.x - p1.x)), mouseWorld.y - (p1.y + tt * (p2.y - p1.y)));
-                return dist < 10;
-            });
-            if (isClickNearLine) changed = true;
-            return !isClickNearLine;
-        });
-
-        const deletedWallIds = (walls || []).filter(w => !nextWalls.includes(w)).map(w => w.id);
-        const nextDoors = (doors || []).filter(door => {
-          if (deletedWallIds.includes(door.wallId)) { changed = true; return false; }
-          const d = Math.hypot(mouseWorld.x - door.x, mouseWorld.y - door.y);
-          if (d < 15) { changed = true; return false; }
-          return true;
-        });
+        if (hoveredObject.type === "block") {
+          nextBlocks = blocks.filter((b) => b.id !== hoveredObject.id);
+          changed = true;
+        } else if (hoveredObject.type === "hull") {
+          nextHulls = hulls.filter((h) => h.id !== hoveredObject.id);
+          changed = true;
+        } else if (hoveredObject.type === "wall") {
+          nextWalls = walls.filter((w) => w.id !== hoveredObject.id);
+          // Удаляем двери, висящие на этой стене
+          nextDoors = doors.filter((d) => d.wallId !== hoveredObject.id);
+          changed = true;
+        } else if (hoveredObject.type === "door") {
+          nextDoors = doors.filter((d) => d.id !== hoveredObject.id);
+          changed = true;
+        }
 
         if (changed) {
           setBlocks(nextBlocks);
+          setHulls(nextHulls);
           setWalls(nextWalls);
           setDoors(nextDoors);
-          saveToHistory(nextBlocks, hulls, nextWalls, nextDoors);
+          saveToHistory(nextBlocks, nextHulls, nextWalls, nextDoors);
+          setHoveredObject(null); // Сбрасываем после удаления
         }
       }
     }
@@ -224,55 +240,115 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
     const rect = containerRef.current.getBoundingClientRect();
     const world = screenToWorld(e.clientX, e.clientY, rect);
     setMouseWorld(world);
-    if (isPanning) setCamera(c => ({ ...c, x: c.x + e.movementX, y: c.y + e.movementY }));
-    
+    if (isPanning)
+      setCamera((c) => ({ ...c, x: c.x + e.movementX, y: c.y + e.movementY }));
+
     if (draggingNode && mode === MODES.EDIT) {
       const nextHulls = JSON.parse(JSON.stringify(hulls));
       const hull = nextHulls[draggingNode.hIdx];
       if (hull) {
-        hull.nodes[draggingNode.nIdx].x = Math.round(world.x / CELL_SIZE) * CELL_SIZE;
-        hull.nodes[draggingNode.nIdx].y = Math.round(world.y / CELL_SIZE) * CELL_SIZE;
+        hull.nodes[draggingNode.nIdx].x =
+          Math.round(world.x / CELL_SIZE) * CELL_SIZE;
+        hull.nodes[draggingNode.nIdx].y =
+          Math.round(world.y / CELL_SIZE) * CELL_SIZE;
         setHulls(nextHulls);
       }
     }
-    
+
     if (draggingWallNode && mode === MODES.EDIT) {
       const nextWalls = JSON.parse(JSON.stringify(walls));
       const wall = nextWalls[draggingWallNode.wIdx];
       if (wall) {
         const nx = Math.round(world.x / CELL_SIZE) * CELL_SIZE;
         const ny = Math.round(world.y / CELL_SIZE) * CELL_SIZE;
-        
+
         // Only update if moved to a new grid point
-        if (wall.nodes[draggingWallNode.nIdx].x !== nx || wall.nodes[draggingWallNode.nIdx].y !== ny) {
+        if (
+          wall.nodes[draggingWallNode.nIdx].x !== nx ||
+          wall.nodes[draggingWallNode.nIdx].y !== ny
+        ) {
           wall.nodes[draggingWallNode.nIdx].x = nx;
           wall.nodes[draggingWallNode.nIdx].y = ny;
           setWalls(nextWalls);
 
           // Update doors attached to this wall
-          setDoors(prevDoors => (prevDoors || []).map(door => {
-            if (door.wallId === wall.id) {
-              const p1 = wall.nodes[door.p1Idx];
-              const p2 = wall.nodes[door.p2Idx];
-              if (p1 && p2) {
-                const dx = p2.x - p1.x;
-                const dy = p2.y - p1.y;
-                return {
-                  ...door,
-                  x: p1.x + door.t * dx,
-                  y: p1.y + door.t * dy,
-                  angle: Math.atan2(dy, dx) * (180 / Math.PI)
-                };
+          setDoors((prevDoors) =>
+            (prevDoors || []).map((door) => {
+              if (door.wallId === wall.id) {
+                const p1 = wall.nodes[door.p1Idx];
+                const p2 = wall.nodes[door.p2Idx];
+                if (p1 && p2) {
+                  const dx = p2.x - p1.x;
+                  const dy = p2.y - p1.y;
+                  return {
+                    ...door,
+                    x: p1.x + door.t * dx,
+                    y: p1.y + door.t * dy,
+                    angle: Math.atan2(dy, dx) * (180 / Math.PI),
+                  };
+                }
               }
-            }
-            return door;
-          }));
+              return door;
+            }),
+          );
         }
       }
     }
 
-    const snap = (mode === MODES.HULL || mode === MODES.SUB_HULL || mode === MODES.EDIT || mode === MODES.WALL) ? Math.round : Math.floor;
-    setHoveredCell({ x: snap(world.x / CELL_SIZE) * CELL_SIZE, y: snap(world.y / CELL_SIZE) * CELL_SIZE });
+    if (mode === MODES.DELETE) {
+      let found = null;
+
+      // 1. Проверка блоков (приоритет сверху)
+      if (deleteConfig.blocks) {
+        const block = [...blocks].reverse().find((b) => {
+          const t = BLOCK_TEMPLATES.find((temp) => temp.id === b.type);
+          const eff = getEffectiveSize(t, b.rotation || 0);
+          return (
+            world.x >= b.x &&
+            world.x <= b.x + eff.w * CELL_SIZE &&
+            world.y >= b.y &&
+            world.y <= b.y + eff.h * CELL_SIZE
+          );
+        });
+        if (block) found = { type: "block", id: block.id };
+      }
+
+      // 2. Проверка дверей
+      if (!found && deleteConfig.doors) {
+        const door = doors.find(
+          (d) => Math.hypot(world.x - d.x, world.y - d.y) < 20,
+        );
+        if (door) found = { type: "door", id: door.id };
+      }
+
+      // 3. Проверка стен
+      if (!found && deleteConfig.walls) {
+        const wallPoint = findNearestWallPoint(world.x, world.y);
+        if (wallPoint) found = { type: "wall", id: wallPoint.wallId };
+      }
+
+      // 4. Проверка корпуса
+      if (!found && deleteConfig.hulls) {
+        const hull = hulls.find((h) => isPointInPoly(world, h.nodes));
+        if (hull) found = { type: "hull", id: hull.id };
+      }
+
+      setHoveredObject(found);
+    } else {
+      setHoveredObject(null);
+    }
+
+    const snap =
+      mode === MODES.HULL ||
+      mode === MODES.SUB_HULL ||
+      mode === MODES.EDIT ||
+      mode === MODES.WALL
+        ? Math.round
+        : Math.floor;
+    setHoveredCell({
+      x: snap(world.x / CELL_SIZE) * CELL_SIZE,
+      y: snap(world.y / CELL_SIZE) * CELL_SIZE,
+    });
   };
 
   const handleMouseUp = () => {
@@ -298,16 +374,17 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
       <div className="world-layer" style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})` }}>
         
         {/* Layer 1: Background Hulls */}
-        <HullLayer layer="background" hulls={hulls} currentHull={currentHull} mode={mode} />
+        <HullLayer layer="background" hulls={hulls} currentHull={currentHull} mode={mode} hoveredObject={hoveredObject} />
         
         {/* Layer 1.5: Walls */}
-        <WallLayer layer="background" walls={walls} currentWall={currentWall} mode={mode} hoveredCell={hoveredCell} onNodeMouseDown={() => {}} />
+        <WallLayer layer="background" walls={walls} currentWall={currentWall} mode={mode} hoveredCell={hoveredCell} onNodeMouseDown={() => {} } hoveredObject={hoveredObject} />
 
         {/* Layer 1.6: Doors */}
         <DoorLayer 
           doors={doors} 
           mode={mode}
           MODES={MODES}
+          hoveredObject={hoveredObject}
           onDoorDelete={(doorId) => {
             const nextDoors = (doors || []).filter(d => d.id !== doorId);
             setDoors(nextDoors);
@@ -321,7 +398,7 @@ const Editor = ({ logic, mode, selectedTemplate, blocks, setBlocks, hulls, setHu
           if (!t) return null;
           const eff = getEffectiveSize(t, b.rotation || 0);
           return (
-            <div key={b.id} className="block" 
+            <div key={b.id} className={`block ${hoveredObject?.type === 'block' && hoveredObject.id === b.id ? 'delete-hover' : ''}`}
                  style={{ 
                     left: b.x, top: b.y, 
                     width: eff.w * CELL_SIZE, height: eff.h * CELL_SIZE,

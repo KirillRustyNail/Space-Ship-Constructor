@@ -56,3 +56,61 @@
   user-select: none;
   -webkit-user-drag: none;
 }
+
+/* Подсветка при удалении */
+.highlight-delete {
+  cursor: pointer;
+}
+
+/* Блоки */
+.block.delete-hover {
+  filter: drop-shadow(0 0 5px red) sepia(1) saturate(5) hue-rotate(-50deg);
+  opacity: 0.8;
+}
+
+/* Стены и Корпус */
+.hull-shape.delete-hover {
+  fill: rgba(255, 0, 0, 0.4) !important;
+  stroke: red !important;
+}
+
+.wall-line.delete-hover {
+  stroke: red !important;
+  stroke-width: 6px !important;
+}
+
+/* Двери */
+.door-image.delete-hover {
+  filter: drop-shadow(0 0 8px red);
+}
+
+/* Панель удаления */
+.delete-toolbar {
+  position: absolute;
+  left: 250px; /* Справа от Sidebar */
+  top: 20px;
+  background: white;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  z-index: 100;
+}
+
+.delete-toolbar button {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+
+.delete-toolbar button.active {
+  background: #e63946;
+  color: white;
+  border-color: #e63946;
+}

@@ -9,7 +9,8 @@ const WallLayer = ({
   hoveredCell, 
   onNodeMouseDown, 
   onNodeDelete, 
-  hoveredObject 
+  hoveredObject,
+  selectedIds
 }) => {
   return (
     <svg className="hulls-svg-layer" style={{ pointerEvents: 'none' }}>
@@ -23,6 +24,7 @@ const WallLayer = ({
                 className={`wall-line ${
                   hoveredObject?.type === 'wall' && hoveredObject.id === wall.id ? 'delete-hover' : ''
                 }`}
+                style={(selectedIds || []).includes(wall.id) ? { stroke: '#219ebc', strokeWidth: 6 } : {}}
               />
             )
           ))}

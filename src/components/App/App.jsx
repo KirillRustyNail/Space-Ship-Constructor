@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Editor from '../../components/Editor/Editor';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import DeleteToolBar from '../DeleteToolBar/DeleteToolBar';
+import Toolbar from '../../components/Toolbar/Toolbar';
+import SelectFilterBar from '../../components/SelectFilterBar/SelectFilterBar';
 import HUD from '../../components/HUD/HUD';
 import { useEditorLogic } from '../../hooks/useEditorLogic';
 import { MODES, BLOCK_TEMPLATES, MAX_HISTORY } from '../../constants';
@@ -28,9 +30,15 @@ const App = () => {
   const [hulls, setHulls] = useState([]);
   const [walls, setWalls] = useState([]); // [{id, nodes: [{x, y}]}]
   const [doors, setDoors] = useState([]);
+  
+  // Selection State
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectionConfig, setSelectionConfig] = useState({
+    blocks: true, hulls: true, walls: true, doors: true
+  });
 
    const [deleteConfig, setDeleteConfig] = useState({
-    blocks: true, hulls: false, walls: true, doors: true
+    blocks: true, hulls: true, walls: true, doors: true
   });
 
   // History
@@ -112,28 +120,38 @@ const App = () => {
 
   return (
     <div className="app-root">
-      <Sidebar 
-        mode={mode} 
-        setMode={setMode} 
-        selected={selectedTemplate} 
-        setSelected={setSelectedTemplate} 
-      />
-      {mode === MODES.DELETE && (
-        <DeleteToolBar config={deleteConfig} setConfig={setDeleteConfig} />
-      )}
+      <div className="sidebar-container">
+        <Toolbar mode={mode} setMode={setMode} />
+        {(mode === MODES.ADD || mode === MODES.DOOR) && (
+          <Sidebar 
+            mode={mode} 
+            selected={selectedTemplate} 
+            setSelected={setSelectedTemplate} 
+          />
+        )}
+      </div>
+
       <div className="main-area">
+        {mode === MODES.DELETE && (
+          <DeleteToolBar config={deleteConfig} setConfig={setDeleteConfig} />
+        )}
+        {mode === MODES.SELECT && (
+           <SelectFilterBar config={selectionConfig} setConfig={setSelectionConfig} />
+        )}
+
         <Editor 
           logic={logic} 
           mode={mode} 
           selectedTemplate={selectedTemplate} 
-          blocks={blocks} 
-          setBlocks={setBlocks}
-          hulls={hulls}
-          setHulls={setHulls}
-          walls={walls}
-          setWalls={setWalls}
-          doors = {doors}
-          setDoors={setDoors}
+          
+          blocks={blocks} setBlocks={setBlocks}
+          hulls={hulls} setHulls={setHulls}
+          walls={walls} setWalls={setWalls}
+          doors={doors} setDoors={setDoors}
+          
+          selectedIds={selectedIds} setSelectedIds={setSelectedIds}
+          selectionConfig={selectionConfig}
+          
           saveToHistory={saveToHistory}
           deleteConfig={deleteConfig} 
         />

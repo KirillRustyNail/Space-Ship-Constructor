@@ -13,15 +13,16 @@ export const MODES = {
   ADD: 'ADD', 
   DELETE: 'DELETE', 
   HULL: 'HULL',
-  SUB_HULL: 'SUB_HULL', // Новый режим
+  SUB_HULL: 'SUB_HULL', 
   EDIT: 'EDIT',
   WALL: 'WALL',
-  DOOR: 'DOOR'
+  DOOR: 'DOOR',
+  SELECT: 'SELECT'
 };
 
 
 export const BLOCK_TEMPLATES = [
-  { id: 'hull_1x1', name: 'Блок 1x1', type: 'block', w: 1, h: 1, svgUrl: 'src/blocks/cabin_2x2.svg' },
+  { id: 'hull_1x1', name: 'Блок 1x1', type: 'block', w: 1, h: 1, svgUrl: 'src/blocks/hull_1x1.svg' },
   { id: 'hull_2x2', name: 'Кабина 2x2',  type: 'block', w: 2, h: 2, svgUrl: 'src/blocks/cabin_2x2.svg' },
   { id: 'engine_1x2', name: 'Двигатель 1x2', type: 'block', w: 1, h: 2, svgUrl: 'src/blocks/engine_1x2.svg' },
   { id: 'wing_3x1', name: 'Крыло 3x1',  type: 'block', w: 3, h: 1, svgUrl: 'src/blocks/wing_3x1.svg' },

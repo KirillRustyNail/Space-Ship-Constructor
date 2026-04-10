@@ -1,11 +1,12 @@
 import React from 'react';
+import './SelectFilterBar.css';
 
-const DeleteToolBar = ({ config, setConfig }) => {
+const SelectFilterBar = ({ config, setConfig }) => {
   const toggle = (key) => setConfig(prev => ({ ...prev, [key]: !prev[key] }));
 
   return (
-    <div className="delete-toolbar">
-      <div style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '5px' }}>Удаление:</div>
+    <div className="select-filter-bar">
+      <div className="filter-label">Фильтр:</div>
       <button className={config.blocks ? 'active' : ''} onClick={() => toggle('blocks')}>Блоки</button>
       <button className={config.hulls ? 'active' : ''} onClick={() => toggle('hulls')}>Корпус</button>
       <button className={config.walls ? 'active' : ''} onClick={() => toggle('walls')}>Стены</button>
@@ -14,4 +15,4 @@ const DeleteToolBar = ({ config, setConfig }) => {
   );
 };
 
-export default DeleteToolBar;
+export default SelectFilterBar;

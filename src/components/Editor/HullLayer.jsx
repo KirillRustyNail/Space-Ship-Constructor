@@ -35,7 +35,8 @@ const HullLayer = ({
   onNodeClick, 
   onNodeDelete, 
   layer = 'all', 
-  hoveredObject 
+  hoveredObject,
+  selectedIds
 }) => {
   return (
     <svg className="hulls-svg-layer">
@@ -48,8 +49,9 @@ const HullLayer = ({
               d={generatePathData(h.nodes)}
               className={`hull-shape ${
                 hoveredObject?.type === 'hull' && hoveredObject.id === h.id ? 'delete-hover' : ''
-              }`}
+              } ${(selectedIds || []).includes(h.id) ? 'selected-outline' : ''}`}
               fillRule="evenodd"
+              style={(selectedIds || []).includes(h.id) ? { stroke: '#219ebc', strokeWidth: 3, fillOpacity: 0.8 } : {}}
             />
           ))}
         </g>

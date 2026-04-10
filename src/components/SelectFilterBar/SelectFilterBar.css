@@ -1,0 +1,40 @@
+.select-filter-bar {
+  position: absolute;
+  top: 10px;
+  left: 10px; /* Слева от области редактирования (справа от Sidebar/Toolbar) */
+  background: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  z-index: 100;
+  font-family: sans-serif;
+  font-size: 12px;
+}
+
+.filter-label {
+  font-weight: bold;
+  color: #555;
+  margin-right: 5px;
+}
+
+.select-filter-bar button {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  background: #f8f9fa;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.select-filter-bar button:hover {
+  background: #e9ecef;
+}
+
+.select-filter-bar button.active {
+  background: #219ebc;
+  color: white;
+  border-color: #219ebc;
+}

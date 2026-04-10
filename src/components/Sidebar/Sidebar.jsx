@@ -2,33 +2,28 @@ import React from 'react';
 import { MODES, BLOCK_TEMPLATES } from '../../constants';
 import './Sidebar.css';
 
-const Sidebar = ({ mode, setMode, selected, setSelected }) => {
+const Sidebar = ({ mode, selected, setSelected }) => {
   const filteredTemplates = BLOCK_TEMPLATES.filter(t => {
     if (mode === MODES.DOOR) return t.type === 'door';
-    return t.type === 'block';
+    return t.type === 'block'; // По умолчанию показываем блоки, если режим ADD или любой другой
   });
+
+  // Если мы не в режиме добавления или дверей, и список пуст - не рендерим сайдбар, 
+  // но лучше проверять режим в родительском компоненте.
+  // Здесь просто рендерим список.
 
   return (
     <div className="sidebar">
-      <h3 style={{ margin: 0 }}>ENGINEERING</h3>
-      <div className="modes">
-        <button className={mode === MODES.ADD ? 'active' : ''} onClick={() => setMode(MODES.ADD)}>ADD (2)</button>
-        <button className={mode === MODES.DELETE ? 'active' : ''} onClick={() => setMode(MODES.DELETE)}>DEL (3)</button>
-        <button className={mode === MODES.HULL ? 'active' : ''} onClick={() => setMode(MODES.HULL)}>HULL (4)</button>
-        <button className={mode === MODES.EDIT ? 'active' : ''} onClick={() => setMode(MODES.EDIT)}>EDIT (5)</button>
-        <button className={mode === MODES.SUB_HULL ? 'active' : ''} onClick={() => setMode(MODES.SUB_HULL)}>SUB_HULL (6)</button>
-        <button className={mode === MODES.WALL ? 'active' : ''} onClick={() => setMode(MODES.WALL)}>WALL (7)</button>
-        <button className={mode === MODES.DOOR ? 'active' : ''} onClick={() => setMode(MODES.DOOR)}>DOOR (8)</button>
-      </div>
+      <h3 style={{ margin: 0 }}>БИБЛИОТЕКА</h3>
       
       <h4 style={{ margin: '10px 0 5px 0', fontSize: '12px', color: '#666' }}>
-        {mode === MODES.DOOR ? 'DOORS' : 'EQUIPMENT'}
+        {mode === MODES.DOOR ? 'ДВЕРИ' : 'ОБОРУДОВАНИЕ'}
       </h4>
       <div className="templates-container">
         {filteredTemplates.map(t => (
           <div 
             key={t.id} 
-            className={`item ${selected.id === t.id ? 'sel' : ''}`} 
+            className={`item ${selected && selected.id === t.id ? 'sel' : ''}`} 
             onClick={() => setSelected(t)}
           >
             <img src={t.svgUrl} alt={t.name} />

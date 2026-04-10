@@ -42,6 +42,34 @@
   pointer-events: none;
 }
 
+.selection-box {
+  position: absolute;
+  border: 1px dashed #219ebc;
+  background: rgba(33, 158, 188, 0.2);
+  pointer-events: none;
+}
+
+.delete-box {
+  position: absolute;
+  border: 1px dashed #e63946;
+  background: rgba(230, 57, 70, 0.2);
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.selection-box {
+  position: absolute;
+  border: 1px dashed #219ebc;
+  background: rgba(33, 158, 188, 0.2);
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.selected-outline {
+  outline: 2px solid #219ebc;
+  z-index: 10;
+}
+
 .block { 
   position: absolute; 
   box-sizing: border-box; 
@@ -87,8 +115,8 @@
 /* Панель удаления */
 .delete-toolbar {
   position: absolute;
-  left: 250px; /* Справа от Sidebar */
-  top: 20px;
+  left: 10px; /* Слева, так как Sidebar скрыт в режиме удаления */
+  top: 10px;
   background: white;
   padding: 10px;
   border: 1px solid #ddd;
